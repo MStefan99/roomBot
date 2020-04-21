@@ -41,7 +41,7 @@ let db;
 				}
 			} else {
 				console.log('Bot management channel deleted or unavailable. Use command ">channel ' +
-					botKey + '" (without quotes) in the desired channel to update.');
+					botKey + '" (without quotes) in the desired channel to set the new channel.');
 				db.run(`delete
 				        from general
 				        where key = 'first_startup'`);
@@ -55,7 +55,7 @@ let db;
 			        where key = 'first_startup'`);
 		}
 	} else {
-		console.log('NO TOKEN FOUND!');
+		console.log('No token found! Run "setup.sh" or add token manually.');
 	}
 })();
 
