@@ -34,7 +34,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=bot
-ExecStart=node $(pwd)/bot.js
+ExecStart=/usr/bin/node $(pwd)/bot.js
 
 [Install]
 WantedBy=multi-user.target
