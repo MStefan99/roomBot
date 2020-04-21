@@ -3,8 +3,8 @@ create table rooms
     id integer not null
         constraint rooms_pk
             primary key autoincrement,
-    channel_snowflake integer not null,
-    owner_snowflake integer not null
+    channel_snowflake text not null,
+    owner_snowflake text not null
 );
 
 create unique index rooms_channel_snowflake_uindex
