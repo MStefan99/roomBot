@@ -211,13 +211,11 @@ client.on('message', async message => {
 							'ever see that again  :zipper_mouth:');
 					}
 				}
-				
 				// Commands not recognized by the bot
 				else {
 					channel.send(`:face_with_raised_eyebrow:  I am just a small room bot, what do you want from me?`);
 				}
 			}
-			
 			// Clear command
 			else if (content.includes('clear')) {
 				rows = await db.get(`select value
@@ -231,7 +229,6 @@ client.on('message', async message => {
 						'everything to stay here forever...  :sweat:')
 				}
 			}
-			
 			// Help command
 			else if (content.includes('help')) {
 				channel.send('I am the roomBot and I can help you to create and manage private rooms on this ' +
@@ -244,7 +241,6 @@ client.on('message', async message => {
 					'That\'s it! Enjoy!  :star_struck:');
 			}
 		}
-		
 		// Channel command
 		else if (content.includes('channel')) {
 			const args = content.split(' ');
