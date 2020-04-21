@@ -4,6 +4,7 @@ const client = new Discord.Client();
 const sqlite3 = require('sqlite3');
 const open = require('sqlite').open;
 const botKey = Math.floor(Math.random() * 100000000);
+const path = require('path');
 let botChannel;
 let rows;
 let db;
@@ -11,7 +12,7 @@ let db;
 
 (async function openDB() {
 	db = await open({
-		filename: './database/db.sqlite',
+		filename: path.resolve(__dirname, './database/db.sqlite'),
 		driver: sqlite3.Database
 	});
 	await db.run(`pragma foreign_keys = on;`);
@@ -248,7 +249,7 @@ client.on('message', async message => {
 				db.run(`insert into general
 				        values ($key, $value)`, {$key: 'bot_channel', $value: channel.id});
 				console.log('Bot channel successfully set. Restart the bot now.');
-				channel.send('Channel set. Restart the bot now.');
+				channel.send('Channel set. Restart the bot after this message is deleted.');
 			} else {
 				console.log('WARNING: somebody tried to change bot channel but used the wrong key!');
 				channel.send('Wrong key!');
