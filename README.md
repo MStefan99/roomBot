@@ -2,6 +2,11 @@
 *A tiny Discord bot to create and manage private rooms for your server*  
 [![Discord logo](https://discordapp.com/assets/fc0b01fe10a0b8c602fb0106d8189d9b.png)](https://discordapp.com)
 ___
+![Version](https://img.shields.io/badge/roomBot-beta-yellow?style=flat-square)
+[![CodeFactor](https://www.codefactor.io/repository/github/mstefan99/roombot/badge?style=flat-square)](https://www.codefactor.io/repository/github/mstefan99/roombot)
+[![License](https://img.shields.io/badge/license-GPL--3.0-brightgreen?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+[![Open issues](https://img.shields.io/github/issues/MStefan99/roombot?style=flat-square)](https://github.com/MStefan99/roombot/issues)
+[![Last commit](https://img.shields.io/github/last-commit/MStefan99/roombot?style=flat-square)](https://github.com/MStefan99/roombot/commits)
 
 ### What can it do?  
 This is a simple bot that allows creating and managing private rooms on your server.  
