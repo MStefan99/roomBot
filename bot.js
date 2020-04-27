@@ -72,7 +72,8 @@ client.on('message', async message => {
 		
 		rows = (await db.all(`select id, snowflake as ssf, channel_snowflake as csf
                              from servers`));
-		//await channel.startTyping();
+		channel.startTyping();
+		await delay(Math.floor(Math.random() * 5000));
 		if (rows.some(row => row['csf'] === channel.id)) {
 			const serverId = rows ? rows.find(row => row['ssf'] === guild.id)['id'] : null;
 			// Room commands
@@ -218,7 +219,8 @@ client.on('message', async message => {
                                      where key = 'allow_clearing'`);
 				if (rows ? rows['value'] === 'true' : false) {
 					await channel.bulkDelete(100);
-					channel.send(`Enjoy your clear channel now, ${message.author.username}!  :relieved:`);
+					channel.send(`Enjoy your clear channel now, ${message.author.username}!  :relieved:\n` +
+					`Start talking to me by typing ">help"!`);
 				} else {
 					channel.send('I\'m not allowed to delete messages here. Some bad people want ' +
 						'everything to stay here forever...  :sweat:')
@@ -232,7 +234,7 @@ client.on('message', async message => {
 					'  2. To invite people to your room, type ">room [room number] invite [user]"\n' +
 					'  3. To kick someone from your room, type ">room [room number] kick [user]"\n' +
 					'  4. To close the room, type ">room [room number] close"\n' +
-					'  5. On some servers you can use ">clear" command to clear *this* channel.' +
+					'  5. On some servers you can use ">clear" command to clear *this* channel.\n' +
 					'That\'s it! Enjoy!  :star_struck:');
 			}
 		}
@@ -241,13 +243,12 @@ client.on('message', async message => {
 			const args = content.split(' ');
 			if (args[2] !== botKey) {
 				console.log('WARNING: somebody tried to change bot channel but used the wrong key!');
-				channel.send('Huh?');
 			} else if (args[1] === 'add') {
 				rows = await db.get(`select channel_snowflake as csf
                                      from servers
                                      where snowflake = $ssf`, {$ssf: guild.id});
 				if (rows ? rows['csf'] : false) {
-					channel.send('Bot channel already exists on this server. Remove that channel first.');
+					console.log('Bot channel already exists on this server. Remove that channel first.');
 				} else {
 					if (!rows) {
 						db.run(`insert into servers(snowflake, channel_snowflake)
@@ -257,8 +258,8 @@ client.on('message', async message => {
                                 set channel_snowflake=$csf
                                 where snowflake = $ssf`, {$ssf: guild.id, $csf: channel.id})
 					}
-					console.log('Bot channel successfully added!');
-					channel.send('Channel was added to the bot.');
+					console.log('Bot channel successfully added.');
+					channel.send('Hi, I am roomBot! Start talking to me by typing ">help"  :wink:');
 				}
 			} else if (args[1] === 'del') {
 				rows = await db.get(`select channel_snowflake as csf
@@ -268,14 +269,14 @@ client.on('message', async message => {
 					db.run(`update servers
                             set channel_snowflake = null
                             where snowflake = $ssf`, {$ssf: guild.id});
-					console.log('Bot channel successfully removed!');
-					channel.send('Channel was removed from the bot.');
+					console.log('Bot channel successfully removed.');
+					channel.send('Seems like I have to go... We\'ve had a good time together!  :sob:');
 				} else {
-					channel.send('This channel was not added to the bot and cannot be removed.');
+					console.log('This channel was not added to the bot and cannot be removed.');
 				}
 			}
 			regenerateKey();
 		}
-		//channel.stopTyping();
+		channel.stopTyping();
 	}
 });

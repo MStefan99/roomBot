@@ -5,6 +5,9 @@ curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash - &&
 	sudo apt-get install nodejs sqlite3 -y &&
 	sudo npm install
 
+sudo sqlite3 ./database/db.sqlite "$(cat ./database/ddl/general.sql ./database/ddl/servers.sql \
+	./database/ddl/rooms.sql ./database/ddl/room_users.sql)"
+
 echo "Please enter your bot token to finish setup:"
 while true; do
 	read -r token
@@ -16,8 +19,11 @@ while true; do
 	fi
 done
 
-sudo sqlite3 ./database/db.sqlite "$(cat ./database/ddl/general.sql ./database/ddl/servers.sql \
-./database/ddl/rooms.sql ./database/ddl/room_users.sql)"
+echo "Do you want your bot to clear the messages in its channel? (yes/[no])?"
+read -r clear
+if [ "$clear" = "yes" ]; then
+	sudo sqlite3 ./database/db.sqlite "insert into general values('allow_clearing', 'true')"
+fi
 sudo sqlite3 ./database/db.sqlite "insert into general values('token', '$token')"
 
 sudo useradd bot
