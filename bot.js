@@ -74,7 +74,7 @@ client.on('message', async message => {
                              from servers`));
 		//await channel.startTyping();
 		if (rows.some(row => row['csf'] === channel.id)) {
-			const serverId = rows? rows.find(row => row['ssf'] === guild.id)['id']: null;
+			const serverId = rows ? rows.find(row => row['ssf'] === guild.id)['id'] : null;
 			// Room commands
 			if (content.includes('room')) {
 				const args = content.split(' ');

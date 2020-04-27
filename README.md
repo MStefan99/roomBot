@@ -22,7 +22,7 @@ Just install the bot, select the channel for talking to the bot and enjoy!
 **Note: For the next step you'll need to have a Discord bot.
 Go to [Discord developer console](https://discordapp.com/developers/applications) and create it if you don't have one.  
 Add the bot to your server by navigating to this link (don't forget to replace client id with one from your console): 
-https://discordapp.com/oauth2/authorize?&client_id=[REPLACE_WITH_YOUR_CLIENT_ID]&scope=bot&permissions=76816**
+https://discordapp.com/oauth2/authorize?&client_id=[REPLACE_WITH_YOUR_CLIENT_ID]&scope=bot&permissions=268504080**
 - Run setup.sh and paste your bot token
 
 ### First launch
