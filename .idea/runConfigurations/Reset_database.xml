@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Reset database" type="DatabaseScript" activateToolWindowBeforeRun="false">
+    <script-file value="$PROJECT_DIR$/database/ddl/reset.sql" />
+    <script-mode>FILE</script-mode>
+    <data-source id="808fc0a9-3ee6-40bc-ac69-6ee1c73eeec4" />
+    <method v="2" />
+  </configuration>
+</component>

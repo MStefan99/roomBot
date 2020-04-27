@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Initialize database" type="DatabaseScript" activateToolWindowBeforeRun="false">
+    <script-file value="$PROJECT_DIR$/database/ddl/general.sql" />
+    <script-file value="$PROJECT_DIR$/database/ddl/servers.sql" />
+    <script-file value="$PROJECT_DIR$/database/ddl/rooms.sql" />
+    <script-file value="$PROJECT_DIR$/database/ddl/room_users.sql" />
+    <script-mode>FILE</script-mode>
+    <data-source id="808fc0a9-3ee6-40bc-ac69-6ee1c73eeec4" />
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Reset database" run_configuration_type="DatabaseScript" />
+    </method>
+  </configuration>
+</component>
