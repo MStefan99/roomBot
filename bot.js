@@ -4,12 +4,19 @@ const client = new Discord.Client();
 const sqlite3 = require('sqlite3');
 const sqlite = require('sqlite');
 const path = require('path');
-const log = require(path.resolve(__dirname, './logger'));
+const log = require('./logger');
+const handle = require('./error');
 
 
 let rows;
 let botKey;
 let db;
+
+
+process.on('uncaughtException', (err, origin) => {
+	handle(err, 'uncaughtException');
+	process.exit(1);
+});
 
 
 const openDB = async () => {
@@ -23,7 +30,7 @@ const openDB = async () => {
 
 function regenerateKey() {
 	botKey = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-	log(`Bot key has changed. The new key is: ${botKey}.`);
+	log(`Bot key has changed. The new key is: ${botKey}.`, 'info');
 }
 
 
@@ -35,19 +42,19 @@ function regenerateKey() {
 		'You can find your key above this message.');
 	const token = (await db.get(`select value
                                  from general
-                                 where key = 'token';`));
+                                 where key = 'token';`).catch(async err => await handle(err, null)));
 	if (token) {
 		await client.login(token['value']);
 		rows = await db.get(`select snowflake, category_snowflake
-                             from servers`);
+                             from servers`).catch(async err => await handle(err, null));
 		if (!rows) {
 			log('No bot channels set. Use command ">bot set [key]'
-				+ '" (without quotes) in the desired channel to set.');
+				+ '" (without quotes) in the desired channel to set.', 'info');
 		}
 	} else {
 		log('No token found! Run "setup.sh" or add token manually by running the following command:\n' +
 			'sqlite3 ' + __dirname + '/database/db.sqlite "insert into general values(\'token\', ' +
-			'\'[YOUR_TOKEN_HERE]\')"');
+			'\'[YOUR_TOKEN_HERE]\')"', 'info');
 	}
 })();
 
@@ -73,25 +80,27 @@ client.on('message', async message => {
 		const channels = guild.channels;
 		
 		rows = await db.all(`select id, snowflake as ssf, channel_snowflake as csf
-                             from servers`);
+                             from servers`).catch(async err => await handle(err, channel));
 		if (rows ? rows.some(row => row['csf'] === channel.id) : false) {
-			channel.startTyping();
-			await delay(Math.floor(Math.random() * 5000));
+			channel.startTyping(1);
+			await delay(Math.floor(Math.random() * 3000) + 1000);
 			const serverId = rows ? rows.find(row => row['ssf'] === guild.id)['id'] : null;
 			// Room commands
-			if (content.includes('room')) {
+			if (content.startsWith('>room')) {
 				const args = content.split(' ');
 				// Create room
 				if (args[1] === 'open') {
 					// Getting id for the new channel
 					rows = await db.get(`select seq
                                          from sqlite_sequence
-                                         where name = 'rooms'`);
+                                         where name = 'rooms'`)
+						.catch(async err => await handle(err, channel));
 					const id = rows ? rows['seq'] + 1 : 1;
 					// Checking if category saved
 					rows = await db.get(`select category_snowflake as csf
                                          from servers
-                                         where snowflake = $ssf`, {$ssf: guild.id});
+                                         where snowflake = $ssf`, {$ssf: guild.id})
+						.catch(async err => await handle(err, channel));
 					let category = await channels.resolve(rows ? rows['csf'] : null);
 					// Checking if saved category still exists
 					if (!category) {
@@ -104,10 +113,14 @@ client.on('message', async message => {
 							permissionOverwrites: [
 								{id: client.user.id, allow: "VIEW_CHANNEL"}
 							]
-						});
-						db.run(`update servers
-                                set category_snowflake=$cid
-                                where snowflake = $ssf`, {$cid: category.id, $ssf: guild.id});
+						}).catch(async err => await handle(err, channel));
+						await db.run(`update servers
+                                      set category_snowflake=$cid
+                                      where snowflake = $ssf`, {$cid: category.id, $ssf: guild.id})
+							.catch(async err => {
+								await category.delete();
+								await handle(err, channel)
+							});
 					}
 					// Creating channel
 					const room = await channels.create(`Private room ${id}`, {
@@ -119,9 +132,13 @@ client.on('message', async message => {
 							{id: message.author.id, allow: 'VIEW_CHANNEL'},
 							{id: guild.roles.everyone.id, deny: 'VIEW_CHANNEL'}
 						]
-					});
-					db.run(`insert into rooms(server_id, channel_snowflake, owner_snowflake)
-                            values ($sid, $cid, $oid)`, {$sid: serverId, $cid: room.id, $oid: message.author.id});
+					}).catch(async err => await handle(err, channel));
+					await db.run(`insert into rooms(server_id, channel_snowflake, owner_snowflake)
+                                  values ($sid, $cid, $oid)`, {$sid: serverId, $cid: room.id, $oid: message.author.id})
+						.catch(async err => {
+							await room.delete();
+							await handle(err, channel)
+						});
 					channel.send(`There you go! Created room ${id} just for you!  :relaxed:`);
 					log(`Room ${id} opened by ${message.author.username}.`, 'info');
 				}
@@ -132,18 +149,19 @@ client.on('message', async message => {
 					
 					let rows = await db.get(`select channel_snowflake as csf
                                              from rooms
-                                             where id = $rid`, {$rid: roomId});
+                                             where id = $rid`, {$rid: roomId})
+						.catch(async err => await handle(err, channel));
 					const room = await channels.resolve(rows ? rows['csf'] : null);
-					const user = (await guild.members.fetch()).find(usr =>
-						(usr.user.username.toLowerCase() === username.toLowerCase()) ||
-						(usr.nickname ? usr.nickname.toLowerCase() === username.toLowerCase() : false));
-					
+					const user = (await guild.members.fetch())
+						.find(usr =>
+							(usr.user.username.toLowerCase() === username.toLowerCase()) ||
+							(usr.nickname ? usr.nickname.toLowerCase() === username.toLowerCase() : false));
 					if (!room) {
 						channel.send('You sure the room exists at all? Can\'t find it...  ');
 					} else if (!user) {
 						if (username.includes('@!')) {
 							channel.send('Please don\'t bother anyone with unnecessary mentions! Just type the ' +
-								'username or nickname of the person to invite them.');
+								'username or nickname of the person.');
 							log('Mention detected.');
 						} else {
 							channel.send(`Who are you talking about? I can\'t find any ${username} in here  :worried:`)
@@ -153,7 +171,8 @@ client.on('message', async message => {
 					} else {
 						rows = await db.get(`select owner_snowflake as osf
                                              from rooms
-                                             where channel_snowflake = $cid`, {$cid: room.id});
+                                             where channel_snowflake = $cid`, {$cid: room.id})
+							.catch(async err => await handle(err, channel));
 						if (rows['osf'] !== message.author.id) {
 							const owner = await guild.members.resolve(rows['osf']);
 							channel.send('Someone is trying to mess with your room!  :rage:  ' +
@@ -169,7 +188,8 @@ client.on('message', async message => {
                                                  from rooms
                                                           left join room_users on rooms.id = room_users.room_id
                                                  where channel_snowflake = $cid
-                                                   and user_snowflake = $uid`, {$cid: room.id, $uid: user.user.id});
+                                                   and user_snowflake = $uid`, {$cid: room.id, $uid: user.user.id})
+								.catch(async err => await handle(err, channel));
 							if (args[2] === 'invite') {
 								if (user.user.id === message.author.id) {
 									channel.send('Have you decided to add yourself again? Don\'t worry, ' +
@@ -178,9 +198,11 @@ client.on('message', async message => {
 									channel.send('You\'re trying to add the same person again. Just go to the channel, ' +
 										'they\'re waiting for you there!  :partying_face:');
 								} else {
-									db.run(`insert into room_users(room_id, user_snowflake)
-                                            values ($rid, $uid)`, {$rid: roomId, $uid: user.user.id});
-									await room.updateOverwrite(user, {'VIEW_CHANNEL': true});
+									await db.run(`insert into room_users(room_id, user_snowflake)
+                                                  values ($rid, $uid)`, {$rid: roomId, $uid: user.user.id})
+										.catch(async err => await handle(err, channel));
+									await room.updateOverwrite(user, {'VIEW_CHANNEL': true})
+										.catch(async err => await handle(err, channel));
 									channel.send(`Done, enjoy ${user.user.username}\'s company!  :fireworks:`);
 									log(`${user.user.username} was invited to room ${roomId}`, 'info');
 								}
@@ -192,11 +214,13 @@ client.on('message', async message => {
 									channel.send('You\'re trying to kick a person who\'s even not in the room! ' +
 										'Why do you hate them so much!?  :frowning:')
 								} else {
-									db.run(`delete
-                                            from room_users
-                                            where room_id = $rid
-                                              and user_snowflake = $uid`, {$rid: roomId, $uid: user.user.id});
-									await room.permissionOverwrites.get(user.user.id).delete();
+									await db.run(`delete
+                                                  from room_users
+                                                  where room_id = $rid
+                                                    and user_snowflake = $uid`, {$rid: roomId, $uid: user.user.id})
+										.catch(async err => await handle(err, channel));
+									await room.permissionOverwrites.get(user.user.id).delete()
+										.catch(async err => await handle(err, channel));
 									channel.send('Done! They won\'t bother you ever again!  :smiling_imp:  ' +
 										'(well, at least, in that room)');
 									log(`${user.user.username} was kicked from room ${roomId}`, 'info');
@@ -213,13 +237,15 @@ client.on('message', async message => {
                                                 rooms.owner_snowflake   as osf
                                          from servers
                                                   inner join rooms on servers.id = rooms.server_id
-                                         where rooms.id = $rid`, {$rid: roomId});
+                                         where rooms.id = $rid`, {$rid: roomId})
+						.catch(async err => await handle(err, channel));
 					if (!rows) {
 						channel.send('Let\' pretend I deleted your invisible room!  :upside_down:');
 					} else if (rows['ssf'] !== guild.id) {
 						channel.send('Wait, that\'s illegal. Are you trying to delete the room on another server!?')
 					} else if (rows['osf'] !== message.author.id) {
-						const owner = await guild.members.resolve(rows['osf']);
+						const owner = await guild.members.resolve(rows['osf'])
+							.catch(async err => await handle(err, channel));
 						channel.send('Someone is trying to delete your room!  :rage:  ' +
 							'But don\'t worry, I\'ve got you covered!\n' + message.author.username +
 							', did you really think I\'ll let you do that!?  ' +
@@ -229,10 +255,12 @@ client.on('message', async message => {
 						log(`${message.author.username} was detected ` +
 							`trying to close ${owner.user.username}'s room (room ${roomId}).`, 'violation');
 					} else {
-						db.run(`delete
-                                from rooms
-                                where id = $rid`, {$rid: roomId});
-						const room = (await guild.channels.resolve(rows['csf'])).delete();
+						const room = (await guild.channels.resolve(rows['csf'])).delete()
+							.catch(async err => await handle(err, channel));
+						await db.run(`delete
+                                      from rooms
+                                      where id = $rid`, {$rid: roomId})
+							.catch(async err => await handle(err, channel));
 						channel.send('Let\'s forget these dark times and I promise that nobody will ' +
 							'ever see that again  :zipper_mouth:');
 						log(`Room ${roomId} closed.`, 'info');
@@ -244,14 +272,15 @@ client.on('message', async message => {
 				}
 			}
 			// Clear command
-			else if (content.includes('clear')) {
+			else if (content.startsWith('>clear')) {
 				rows = await db.get(`select value
                                      from general
-                                     where key = 'allow_clearing'`);
+                                     where key = 'allow_clearing'`)
+					.catch(async err => await handle(err, channel));
 				if (rows ? rows['value'] === 'true' : false) {
-					await channel.bulkDelete(100);
+					await channel.bulkDelete(100).catch(async err => await handle(err, channel));
 					channel.send(`Enjoy your clear channel now, ${message.author.username}!  :relieved:\n` +
-						`I am allowed to only delete last 100 messages, so if there are any left - just clear again! \n` +
+						`I am only allowed to delete last 100 messages, so if there are any left - just clear again! \n` +
 						`Start talking to me by typing ">help"!`);
 					log('Message history cleared.', 'info');
 				} else {
@@ -261,7 +290,7 @@ client.on('message', async message => {
 				}
 			}
 			// Help command
-			else if (content.includes('help')) {
+			else if (content.startsWith('>help')) {
 				channel.send('I am the roomBot and I can help you to create and manage private rooms on this ' +
 					'server!  :slight_smile:\n' +
 					'  1. To open the new room, type ">room open (voice)"\n' +
@@ -275,7 +304,7 @@ client.on('message', async message => {
 			}
 		}
 		// Channel command
-		if (content.includes('bot')) {
+		if (content.startsWith('>bot')) {
 			const args = content.split(' ');
 			if (args[2] !== botKey) {
 				log('WARNING: somebody tried to change bot channel but used the wrong key!', 'warning');
@@ -284,19 +313,22 @@ client.on('message', async message => {
 			} else if (args[1] === 'set') {
 				rows = await db.get(`select channel_snowflake as csf
                                      from servers
-                                     where snowflake = $ssf`, {$ssf: guild.id});
+                                     where snowflake = $ssf`, {$ssf: guild.id})
+					.catch(async err => await handle(err, channel));
 				if (rows ? rows['csf'] : false) {
 					log(`Bot channel already exists on this server. ` +
 						`Remove that channel with id ${rows['csf']} first.`, 'warning');
 					channel.send('I am already on this server, no need to add me twice! Just find me in my channel!');
 				} else {
 					if (!rows) {
-						db.run(`insert into servers(snowflake, channel_snowflake)
-                                values ($ssf, $csf)`, {$ssf: guild.id, $csf: channel.id});
+						await db.run(`insert into servers(snowflake, channel_snowflake)
+                                      values ($ssf, $csf)`, {$ssf: guild.id, $csf: channel.id})
+							.catch(async err => await handle(err, channel));
 					} else {
-						db.run(`update servers
-                                set channel_snowflake=$csf
-                                where snowflake = $ssf`, {$ssf: guild.id, $csf: channel.id})
+						await db.run(`update servers
+                                      set channel_snowflake=$csf
+                                      where snowflake = $ssf`, {$ssf: guild.id, $csf: channel.id})
+							.catch(async err => await handle(err, channel));
 					}
 					log(`Bot channel with id ${channel.id} successfully added.`, 'info');
 					channel.send('Hi, I am roomBot! Start talking to me by typing ">help"  :wink:');
@@ -304,11 +336,13 @@ client.on('message', async message => {
 			} else if (args[1] === 'del') {
 				rows = await db.get(`select channel_snowflake as csf
                                      from servers
-                                     where snowflake = $ssf`, {$ssf: guild.id});
+                                     where snowflake = $ssf`, {$ssf: guild.id})
+					.catch(async err => await handle(err, channel));
 				if (rows ? rows['csf'] === channel.id : false) {
-					db.run(`update servers
-                            set channel_snowflake = null
-                            where snowflake = $ssf`, {$ssf: guild.id});
+					await db.run(`update servers
+                                  set channel_snowflake = null
+                                  where snowflake = $ssf`, {$ssf: guild.id})
+						.catch(async err => await handle(err, channel));
 					log(`Bot channel with id ${channel.id} successfully removed.`, 'info');
 					channel.send('Seems like I have to go... We\'ve had a good time together!  :sob:');
 				} else {
