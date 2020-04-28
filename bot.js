@@ -253,8 +253,9 @@ client.on('message', async message => {
 					channel.send(`Enjoy your clear channel now, ${message.author.username}!  :relieved:\n` +
 						`I am allowed to only delete last 100 messages, so if there are any left - just clear again! \n` +
 						`Start talking to me by typing ">help"!`);
-					log('Message history cleared.');
+					log('Message history cleared.', 'info');
 				} else {
+					log(`${message.author.username} tried to clear the message history.`, 'violation');
 					channel.send('I\'m not allowed to delete messages here. Some bad people want ' +
 						'everything to stay here forever...  :sweat:')
 				}
@@ -267,7 +268,9 @@ client.on('message', async message => {
 					'  2. To invite people to your room, type ">room [room number] invite [user]"\n' +
 					'  3. To kick someone from your room, type ">room [room number] kick [user]"\n' +
 					'  4. To close the room, type ">room [room number] close"\n' +
-					'  5. On some servers you can use ">clear" command to clear *this* channel.\n' +
+					'  5. To clear **this** channel, type ">clear"\n' +
+					'Names can be either usernames (without tag) or nicknames and are case-insensitive. ' +
+					'Please don\'t use mentions. Clear command can be disabled by the bot host.\n' +
 					'That\'s it! Enjoy!  :star_struck:');
 			}
 		}
@@ -276,7 +279,8 @@ client.on('message', async message => {
 			const args = content.split(' ');
 			if (args[2] !== botKey) {
 				log('WARNING: somebody tried to change bot channel but used the wrong key!', 'warning');
-				channel.send('Seems like this is the wrong key. Are you really the owner?  :frowning:');
+				channel.send('Seems like this is the wrong key. Are you really the owner?  :frowning:\n' +
+					'Note that these commands are meant to be used by the bot host **only. This will be reported**.');
 			} else if (args[1] === 'set') {
 				rows = await db.get(`select channel_snowflake as csf
                                      from servers
@@ -284,6 +288,7 @@ client.on('message', async message => {
 				if (rows ? rows['csf'] : false) {
 					log(`Bot channel already exists on this server. ` +
 						`Remove that channel with id ${rows['csf']} first.`, 'warning');
+					channel.send('I am already on this server, no need to add me twice! Just find me in my channel!');
 				} else {
 					if (!rows) {
 						db.run(`insert into servers(snowflake, channel_snowflake)
@@ -307,6 +312,7 @@ client.on('message', async message => {
 					log(`Bot channel with id ${channel.id} successfully removed.`, 'info');
 					channel.send('Seems like I have to go... We\'ve had a good time together!  :sob:');
 				} else {
+					channel.send('I am not in this channel so you can\'t remove me from here.');
 					log('This channel was not added to the bot and cannot be removed.', 'warning');
 				}
 			}
