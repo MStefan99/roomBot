@@ -201,3 +201,4 @@ fabric.properties
 # Database files
 *.sqlite
 releases
+log

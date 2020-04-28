@@ -4,11 +4,13 @@ const client = new Discord.Client();
 const sqlite3 = require('sqlite3');
 const sqlite = require('sqlite');
 const path = require('path');
+const log = require(path.resolve(__dirname, './logger'));
 
 
 let rows;
 let botKey;
 let db;
+
 
 const openDB = async () => {
 	db = await sqlite.open({
@@ -21,15 +23,15 @@ const openDB = async () => {
 
 function regenerateKey() {
 	botKey = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-	console.log(`Bot key has changed. The new key is: ${botKey}.`);
+	log(`Bot key has changed. The new key is: ${botKey}.`);
 }
 
 
 (async function initServer() {
 	await openDB();
 	regenerateKey();
-	console.log('Welcome to roomBot! Add channels by sending ">channel add [key]" into desired Discord channel ' +
-		'and remove by sending ">channel del [key]". The code will be updated after each channel action. ' +
+	log('Welcome to roomBot! Add channels by sending ">bot set [key]" into desired Discord channel ' +
+		'and remove by sending ">bot del [key]". The code will be updated after each channel action. ' +
 		'You can find your key above this message.');
 	const token = (await db.get(`select value
                                  from general
@@ -39,11 +41,11 @@ function regenerateKey() {
 		rows = await db.get(`select snowflake, category_snowflake
                              from servers`);
 		if (!rows) {
-			console.log('No bot channels set. Use command ">channel add [key]'
+			log('No bot channels set. Use command ">bot set [key]'
 				+ '" (without quotes) in the desired channel to set.');
 		}
 	} else {
-		console.log('No token found! Run "setup.sh" or add token manually by running the following command:\n' +
+		log('No token found! Run "setup.sh" or add token manually by running the following command:\n' +
 			'sqlite3 ' + __dirname + '/database/db.sqlite "insert into general values(\'token\', ' +
 			'\'[YOUR_TOKEN_HERE]\')"');
 	}
@@ -58,23 +60,23 @@ async function delay(ms) {
 
 
 client.on('ready', () => {
-	console.log('Bot ready.');
+	log('Bot ready.');
 });
 
 
 client.on('message', async message => {
-	// Necessary checks for the bot to stay in its channel and answer only messages starting with '/'
+	// Necessary checks for the bot to stay in its channel and answer only messages starting with '>'
 	if (message.content.startsWith('>')) {
 		const content = message.content;
 		const channel = message.channel;
 		const guild = channel.guild;
 		const channels = guild.channels;
 		
-		rows = (await db.all(`select id, snowflake as ssf, channel_snowflake as csf
-                             from servers`));
-		channel.startTyping();
-		await delay(Math.floor(Math.random() * 5000));
-		if (rows.some(row => row['csf'] === channel.id)) {
+		rows = await db.all(`select id, snowflake as ssf, channel_snowflake as csf
+                             from servers`);
+		if (rows ? rows.some(row => row['csf'] === channel.id) : false) {
+			channel.startTyping();
+			await delay(Math.floor(Math.random() * 5000));
 			const serverId = rows ? rows.find(row => row['ssf'] === guild.id)['id'] : null;
 			// Room commands
 			if (content.includes('room')) {
@@ -96,6 +98,7 @@ client.on('message', async message => {
 						// Creating category if not
 						channel.send('How did you not have any private rooms yet!?\n' +
 							'Nevermind, I even created the category for you! :kissing_heart:');
+						log('Category created', 'info');
 						category = await channels.create('Private rooms by roomBot', {
 							type: 'category',
 							permissionOverwrites: [
@@ -120,6 +123,7 @@ client.on('message', async message => {
 					db.run(`insert into rooms(server_id, channel_snowflake, owner_snowflake)
                             values ($sid, $cid, $oid)`, {$sid: serverId, $cid: room.id, $oid: message.author.id});
 					channel.send(`There you go! Created room ${id} just for you!  :relaxed:`);
+					log(`Room ${id} opened by ${message.author.username}.`, 'info');
 				}
 				// Add or remove users from the room
 				else if (args[2] === 'invite' || args[2] === 'kick') {
@@ -137,24 +141,36 @@ client.on('message', async message => {
 					if (!room) {
 						channel.send('You sure the room exists at all? Can\'t find it...  ');
 					} else if (!user) {
-						channel.send(`Who are you talking about? I can\'t find any ${username} in here  :worried:`)
+						if (username.includes('@!')) {
+							channel.send('Please don\'t bother anyone with unnecessary mentions! Just type the ' +
+								'username or nickname of the person to invite them.');
+							log('Mention detected.');
+						} else {
+							channel.send(`Who are you talking about? I can\'t find any ${username} in here  :worried:`)
+						}
+					} else if (user.id === client.user.id) {
+						channel.send('Hey there! You can\'t invite or kick me from the room!  :innocent:');
 					} else {
 						rows = await db.get(`select owner_snowflake as osf
                                              from rooms
                                              where channel_snowflake = $cid`, {$cid: room.id});
 						if (rows['osf'] !== message.author.id) {
 							const owner = await guild.members.resolve(rows['osf']);
-							channel.send('Someone is trying to mess with your room!!!  :sos: :sos: :sos:', {
+							channel.send('Someone is trying to mess with your room!  :rage:  ' +
+								'I\'ll let you sort it out this time.\n' + message.author.username +
+								', did you really think I\'ll let you do that!?  ' +
+								':face_with_raised_eyebrow:', {
 								reply: owner.user
 							});
+							log(`${message.author.username} was detected ` +
+								`trying to manage ${owner.user.username}'s room (room ${roomId}).`, 'violation');
 						} else {
 							rows = await db.get(`select owner_snowflake, room_users.user_snowflake
                                                  from rooms
                                                           left join room_users on rooms.id = room_users.room_id
                                                  where channel_snowflake = $cid
                                                    and user_snowflake = $uid`, {$cid: room.id, $uid: user.user.id});
-							if (args[2] === 'invite') {  // Adding user
-								
+							if (args[2] === 'invite') {
 								if (user.user.id === message.author.id) {
 									channel.send('Have you decided to add yourself again? Don\'t worry, ' +
 										'you\'re already there!  :wink:')
@@ -166,6 +182,7 @@ client.on('message', async message => {
                                             values ($rid, $uid)`, {$rid: roomId, $uid: user.user.id});
 									await room.updateOverwrite(user, {'VIEW_CHANNEL': true});
 									channel.send(`Done, enjoy ${user.user.username}\'s company!  :fireworks:`);
+									log(`${user.user.username} was invited to room ${roomId}`, 'info');
 								}
 							} else {
 								if (user.user.id === message.author.id) {
@@ -182,6 +199,7 @@ client.on('message', async message => {
 									await room.permissionOverwrites.get(user.user.id).delete();
 									channel.send('Done! They won\'t bother you ever again!  :smiling_imp:  ' +
 										'(well, at least, in that room)');
+									log(`${user.user.username} was kicked from room ${roomId}`, 'info');
 								}
 							}
 						}
@@ -190,14 +208,26 @@ client.on('message', async message => {
 				// Remove the room
 				else if (args[2] === 'close') {
 					const roomId = args[1];
-					rows = await db.get(`select channel_snowflake as csf, owner_snowflake as osf
-                                         from rooms
-                                         where id = $rid`, {$rid: roomId});
+					rows = await db.get(`select snowflake               as ssf,
+                                                rooms.channel_snowflake as csf,
+                                                rooms.owner_snowflake   as osf
+                                         from servers
+                                                  inner join rooms on servers.id = rooms.server_id
+                                         where rooms.id = $rid`, {$rid: roomId});
 					if (!rows) {
 						channel.send('Let\' pretend I deleted your invisible room!  :upside_down:');
+					} else if (rows['ssf'] !== guild.id) {
+						channel.send('Wait, that\'s illegal. Are you trying to delete the room on another server!?')
 					} else if (rows['osf'] !== message.author.id) {
-						channel.send('Trying to delete the room you didn\'t create! How naive! ' +
-							'Did you really think I\'ll let you do that!?  :face_with_monocle:')
+						const owner = await guild.members.resolve(rows['osf']);
+						channel.send('Someone is trying to delete your room!  :rage:  ' +
+							'But don\'t worry, I\'ve got you covered!\n' + message.author.username +
+							', did you really think I\'ll let you do that!?  ' +
+							':face_with_raised_eyebrow:', {
+							reply: owner.user
+						})
+						log(`${message.author.username} was detected ` +
+							`trying to close ${owner.user.username}'s room (room ${roomId}).`, 'violation');
 					} else {
 						db.run(`delete
                                 from rooms
@@ -205,6 +235,7 @@ client.on('message', async message => {
 						const room = (await guild.channels.resolve(rows['csf'])).delete();
 						channel.send('Let\'s forget these dark times and I promise that nobody will ' +
 							'ever see that again  :zipper_mouth:');
+						log(`Room ${roomId} closed.`, 'info');
 					}
 				}
 				// Commands not recognized by the bot
@@ -220,7 +251,9 @@ client.on('message', async message => {
 				if (rows ? rows['value'] === 'true' : false) {
 					await channel.bulkDelete(100);
 					channel.send(`Enjoy your clear channel now, ${message.author.username}!  :relieved:\n` +
-					`Start talking to me by typing ">help"!`);
+						`I am allowed to only delete last 100 messages, so if there are any left - just clear again! \n` +
+						`Start talking to me by typing ">help"!`);
+					log('Message history cleared.');
 				} else {
 					channel.send('I\'m not allowed to delete messages here. Some bad people want ' +
 						'everything to stay here forever...  :sweat:')
@@ -239,16 +272,18 @@ client.on('message', async message => {
 			}
 		}
 		// Channel command
-		if (content.includes('channel')) {
+		if (content.includes('bot')) {
 			const args = content.split(' ');
 			if (args[2] !== botKey) {
-				console.log('WARNING: somebody tried to change bot channel but used the wrong key!');
-			} else if (args[1] === 'add') {
+				log('WARNING: somebody tried to change bot channel but used the wrong key!', 'warning');
+				channel.send('Seems like this is the wrong key. Are you really the owner?  :frowning:');
+			} else if (args[1] === 'set') {
 				rows = await db.get(`select channel_snowflake as csf
                                      from servers
                                      where snowflake = $ssf`, {$ssf: guild.id});
 				if (rows ? rows['csf'] : false) {
-					console.log('Bot channel already exists on this server. Remove that channel first.');
+					log(`Bot channel already exists on this server. ` +
+						`Remove that channel with id ${rows['csf']} first.`, 'warning');
 				} else {
 					if (!rows) {
 						db.run(`insert into servers(snowflake, channel_snowflake)
@@ -258,7 +293,7 @@ client.on('message', async message => {
                                 set channel_snowflake=$csf
                                 where snowflake = $ssf`, {$ssf: guild.id, $csf: channel.id})
 					}
-					console.log('Bot channel successfully added.');
+					log(`Bot channel with id ${channel.id} successfully added.`, 'info');
 					channel.send('Hi, I am roomBot! Start talking to me by typing ">help"  :wink:');
 				}
 			} else if (args[1] === 'del') {
@@ -269,10 +304,10 @@ client.on('message', async message => {
 					db.run(`update servers
                             set channel_snowflake = null
                             where snowflake = $ssf`, {$ssf: guild.id});
-					console.log('Bot channel successfully removed.');
+					log(`Bot channel with id ${channel.id} successfully removed.`, 'info');
 					channel.send('Seems like I have to go... We\'ve had a good time together!  :sob:');
 				} else {
-					console.log('This channel was not added to the bot and cannot be removed.');
+					log('This channel was not added to the bot and cannot be removed.', 'warning');
 				}
 			}
 			regenerateKey();
