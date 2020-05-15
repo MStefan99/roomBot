@@ -28,7 +28,7 @@ The script was written for Ubuntu/Debian, other Linux distributions are not supp
 **Note: For the next step you'll need to have a Discord bot.
 Go to [Discord developer console](https://discordapp.com/developers/applications) and create it if you don't have one.  
 Add the bot to your server by navigating to this link (don't forget to replace client id with one from your console): 
-https://discordapp.com/oauth2/authorize?&client_id=[REPLACE_WITH_YOUR_CLIENT_ID]&scope=bot&permissions=268504080**
+https://discordapp.com/oauth2/authorize?&client_id=[REPLACE_WITH_YOUR_CLIENT_ID]&scope=bot&permissions=268643344**
 - Run `setup.sh`.
 - Your bot is now running. Next, run `systemctl status roombot`.
 - Follow the instructions to add management channels to the bot.
