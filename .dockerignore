@@ -1,0 +1,6 @@
+**/*.sqlite
+log
+node_modules
+releases
+**/*.md
+LICENSE

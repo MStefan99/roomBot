@@ -8,24 +8,6 @@ curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash - &&
 sudo sqlite3 ./database/db.sqlite "$(cat ./database/ddl/general.sql ./database/ddl/servers.sql \
 	./database/ddl/rooms.sql ./database/ddl/room_users.sql)"
 
-echo "Please enter your bot token to finish setup:"
-while true; do
-	read -r token
-
-	if [ -z "$token" ]; then
-		echo "The token cannot be empty. Please enter the token:"
-	else
-		break
-	fi
-done
-
-echo "Do you want your bot to clear the messages in its channel? (yes/[no])?"
-read -r clear
-if [ "$clear" = "yes" ]; then
-	sudo sqlite3 ./database/db.sqlite "insert into general values('allow_clearing', 'true')"
-fi
-sudo sqlite3 ./database/db.sqlite "insert into general values('token', '$token')"
-
 sudo useradd bot
 sudo chown -R bot:bot ./
 

@@ -4,10 +4,13 @@ const client = new Discord.Client();
 const sqlite3 = require('sqlite3');
 const sqlite = require('sqlite');
 const path = require('path');
+
+const configurer = require('./configurer');
 const log = require('./logger');
 const handle = require('./error');
 
 
+let config = configurer();
 let rows;
 let botKey;
 let db;
@@ -40,11 +43,10 @@ function regenerateKey() {
 	log('Welcome to roomBot! Add channels by sending ">bot set [key]" into desired Discord channel ' +
 		'and remove by sending ">bot del [key]". The code will be updated after each channel action. ' +
 		'You can find your key above this message.');
-	const token = (await db.get(`select value
-                                 from general
-                                 where key = 'token';`).catch(async err => await handle(err, null)));
-	if (token) {
-		await client.login(token['value']);
+	config = await config.load();
+
+	if (config.token) {
+		await client.login(config.token);
 		rows = await db.get(`select snowflake, category_snowflake
                              from servers`).catch(async err => await handle(err, null));
 		if (!rows) {
@@ -52,9 +54,7 @@ function regenerateKey() {
 				+ '" (without quotes) in the desired channel to set.', 'info');
 		}
 	} else {
-		log('No token found! Run "setup.sh" or add token manually by running the following command:\n' +
-			'sqlite3 ' + __dirname + '/database/db.sqlite "insert into general values(\'token\', ' +
-			'\'[YOUR_TOKEN_HERE]\')"', 'info');
+		log('No token found! Run "setup.sh" or add token manually to the ./config.json file.', 'info');
 	}
 })();
 
@@ -273,11 +273,7 @@ client.on('message', async message => {
 			}
 			// Clear command
 			else if (content.startsWith('>clear')) {
-				rows = await db.get(`select value
-                                     from general
-                                     where key = 'allow_clearing'`)
-					.catch(async err => await handle(err, channel));
-				if (rows ? rows['value'] === 'true' : false) {
+				if (config.allowClearing) {
 					await channel.bulkDelete(100).catch(async err => await handle(err, channel));
 					channel.send(`Enjoy your clear channel now, ${message.author.username}!  :relieved:\n` +
 						`I am only allowed to delete last 100 messages, so if there are any left - just clear again! \n` +
