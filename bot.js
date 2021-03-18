@@ -299,7 +299,7 @@ client.on('message', async message => {
 					'  3. To kick someone from your room, type ">room [room number] kick [user]"\n' +
 					'  4. To close the room, type ">room [room number] close"\n' +
 					'  5. To clear **this** channel, type ">clear"\n' +
-					'Names can be either usernames (without tag) or nicknames and are case-insensitive. ' +
+					'Names can be either usernames (without tag), nicknames (both case-insensitive) or Discord IDs. ' +
 					'Please don\'t use mentions. Clear command can be disabled by the bot host.\n' +
 					'That\'s it! Enjoy!  :star_struck:');
 			}
