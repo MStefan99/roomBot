@@ -10,9 +10,9 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"configurer": "^1.0.0",
+		"@mstefan99/configurer": "^1.0.0",
+		"@mstefan99/logger": "^1.0.0",
 		"discord.js": "^12.2.0",
-		"logger": "^1.0.0",
 		"sqlite": "^4.0.7",
 		"sqlite3": "^4.1.1"
 	}
