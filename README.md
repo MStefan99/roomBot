@@ -3,10 +3,9 @@
 [![Discord logo](https://discordapp.com/assets/fc0b01fe10a0b8c602fb0106d8189d9b.png)](https://discordapp.com)
 ___
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/MStefan99/roomBot?label=version&style=flat-square)
-[![CodeFactor](https://www.codefactor.io/repository/github/mstefan99/roombot/badge?style=flat-square)](https://www.codefactor.io/repository/github/mstefan99/roombot)
 [![License](https://img.shields.io/badge/license-GPL--3.0-brightgreen?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Open issues](https://img.shields.io/github/issues/MStefan99/roombot?style=flat-square)](https://github.com/MStefan99/roombot/issues)
-[![Last commit](https://img.shields.io/github/last-commit/MStefan99/roombot?style=flat-square)](https://github.com/MStefan99/roombot/commits)
+![Maintenance](https://img.shields.io/maintenance/no/2021?style=flat-square)
 
 ### What can it do?  
 This is a bot that allows creating and managing private rooms on your server.  
@@ -19,7 +18,7 @@ Just install the bot, select the channel for talking to the bot and enjoy!
 Since I unfortunately cannot publicly host the bot for free and reliably, you'll have to set up your own hosting.  
 This could be any computer with an internet access, no port forwarding required.  
 I have included a small script for you to make the setup process as easy and quick as possible. 
-The script was written for Ubuntu/Debian, other Linux distributions are not supported at this time.  
+The script was written for Ubuntu/Debian, other Linux distributions are not supported.  
 
 ### Installation
 - Navigate to [releases](https://github.com/MStefan99/roomBot/releases)
