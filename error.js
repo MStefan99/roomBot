@@ -1,4 +1,4 @@
-const log = require('logger');
+const log = require('./lib/logger');
 
 
 async function handle(error, channel) {

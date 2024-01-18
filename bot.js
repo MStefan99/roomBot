@@ -4,8 +4,8 @@ const sqlite3 = require('sqlite3');
 const sqlite = require('sqlite');
 const path = require('path');
 
-const configurer = require('configurer');
-const log = require('logger');
+const configurer = require('./lib/configurer');
+const log = require('./lib/logger');
 const handle = require('./error');
 
 
